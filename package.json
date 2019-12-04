@@ -1,0 +1,50 @@
+{
+  "name": "fabric-chaincode-compliance",
+  "version": "0.0.1",
+  "description": "A tool for testing fabric chaincode implementations",
+  "main": "dist/index.js",
+  "bin": {
+    "fabric-chaincode-compliance": "dist/src/cli.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ampretia/fabric-chaincode-compliance.git"
+  },
+  "keywords": [
+    "fabric",
+    "testing",
+    "chaincode",
+    "cucumber"
+  ],
+  "author": "ampretia",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/ampretia/fabric-chaincode-compliance/issues"
+  },
+  "homepage": "https://github.com/ampretia/fabric-chaincode-compliance#readme",
+  "devDependencies": {
+    "@types/chai": "^4.2.6",
+    "@types/cucumber": "^6.0.0",
+    "@types/fs-extra": "^8.0.1",
+    "@types/js-yaml": "^3.12.1",
+    "cucumber-tsflow": "^3.2.0",
+    "ts-node": "^8.5.4",
+    "tslint": "^5.20.1",
+    "typescript": "^3.7.2"
+  },
+  "dependencies": {
+    "chai": "^4.2.0",
+    "cucumber": "^6.0.5",
+    "fabric-ca-client": "^1.4.4",
+    "fabric-client": "^1.4.4",
+    "fabric-network": "^1.4.4",
+    "fs-extra": "^8.1.0",
+    "handlebars": "^4.5.3",
+    "js-yaml": "^3.13.1",
+    "yargs": "^15.0.2"
+  }
+}
