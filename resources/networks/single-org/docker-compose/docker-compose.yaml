@@ -9,6 +9,8 @@ services:
     environment: 
       - ORDERER_GENERAL_LOCALMSPID=OrdererMSP
       - ORDERER_GENERAL_LOCALMSPDIR=/etc/hyperledger/orderer/msp
+      - ORDERER_GENERAL_TLS_PRIVATEKEY=/etc/hyperledger/orderer/tls/server.key
+      - ORDERER_GENERAL_TLS_CERTIFICATE=/etc/hyperledger/orderer/tls/server.crt
       - ORDERER_GENERAL_TLS_ROOTCAS=[/etc/hyperledger/orderer/tls/ca.crt, /etc/hyperledger/peerOrg1/tls/ca.crt]
       - ORDERER_GENERAL_TLS_CLIENTROOTCAS=[/etc/hyperledger/orderer/tls/ca.crt, /etc/hyperledger/peerOrg1/msp/cacerts/ca.org1.com-cert.pem, /etc/hyperledger/peerOrg1/tls/ca.crt]
     ports:

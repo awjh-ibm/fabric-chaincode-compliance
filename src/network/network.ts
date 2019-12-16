@@ -7,10 +7,6 @@ import * as path from 'path';
 import { BaseComponent, CA, Channel, Orderer, Org, Peer, Profile } from '../interfaces/interfaces';
 import { Docker } from '../utils/docker';
 
-export enum NetworkType {
-    SINGLE_ORG,
-}
-
 export interface NetworkDetails {
     resourceFolder: string;
     tag: string;
@@ -26,16 +22,20 @@ const networkResources = path.resolve(__dirname, '../../resources/networks');
 const networkComposeFile = 'docker-compose/docker-compose.yaml';
 const cliComposeFile = path.join(networkResources, 'shared', 'docker-compose/docker-compose-cli.yaml');
 
+export const DEFINED_NETWORKS = fs.readdirSync(networkResources).filter((name) => name !== 'shared' && name !== 'scripts');
+
 export class Network {
     private name: string;
-    private type: NetworkType;
     private details: NetworkDetails;
     private config: NetworkConfiguration;
     private channels: Map<string, Channel>;
 
-    public constructor(type: NetworkType) {
-        this.name = networkTypeToString(type);
-        this.type = type;
+    public constructor(type: string) {
+        if (!DEFINED_NETWORKS.some((name) => name === type)) {
+            throw new Error(`Network "${type}" not found`);
+        }
+
+        this.name = type;
         this.details = {
             resourceFolder: path.join(networkResources, this.name),
             tag: '@' + this.name.replace(/([-][a-z])/g, (group) => group.toUpperCase().replace('-', '')),
@@ -278,14 +278,8 @@ export class Network {
         return cas as CA[];
     }
 
-    public async teardownExisting() {
-        const networkNames: string[] = Object.keys(NetworkType).filter((key) => {
-            return typeof NetworkType[key] !== 'number';
-        }).map((key: any) => {
-            return networkTypeToString(key);
-        });
-
-        const upNetworks = await Docker.projectsUp(...networkNames);
+    private async teardownExisting() {
+        const upNetworks = await Docker.projectsUp(...DEFINED_NETWORKS);
         for (const network of upNetworks) {
             await this.teardownNetwork(network);
         }
@@ -338,8 +332,4 @@ function orgToSmall(orgName) {
     }
 
     return orgName.replace(/(?:^|\.?)([A-Z])/g, (x, y: string) => '-' + y.toLowerCase()).replace(/^-/, '');
-}
-
-function networkTypeToString(type: NetworkType): string {
-    return NetworkType[type].toLowerCase().split('_').join('-');
 }

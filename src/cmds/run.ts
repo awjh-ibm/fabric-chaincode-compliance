@@ -3,7 +3,7 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import { Arguments, Argv, CommandModule } from 'yargs';
 import { Global } from '../interfaces/interfaces';
-import { Network, NetworkType } from '../network/network';
+import { DEFINED_NETWORKS, Network } from '../network/network';
 import { addExports } from './utils';
 
 declare const global: Global;
@@ -58,35 +58,42 @@ const cmd: CommandModule = {
     desc: 'Run the compliance tests',
     handler: (args: Arguments): Arguments => {
         const chaincodeFolder = path.resolve(process.cwd(), args.chaincodeDir);
-
         global.CHAINCODE_LANGUAGE = args.language;
 
-        const network = new Network(NetworkType.SINGLE_ORG);
-        global.CURRENT_NETWORK = network;
-
-        const cli = new (cucumber as any).Cli({
-            // TODO WE WILL NEED TO HANDLE NETWORKS WITH PRIVATE DATA STORES ETC
-            argv: process.argv.slice(0, 2).concat(cucumberArgs),
-            cwd: process.cwd(),
-            stdout: process.stdout,
-        });
-
         return args.thePromise = new Promise(async (resolve, reject) => {
-            try {
-                await fs.copy(chaincodeFolder, dockerChaincodeFolder);
-                await network.build();
-            } catch (err) {
-                reject(err);
+            const cucumberErrors = [];
+
+            for (const name of DEFINED_NETWORKS) {
+                const network = new Network(name);
+                global.CURRENT_NETWORK = network;
+
+                const cli = new (cucumber as any).Cli({
+                    // TODO WE WILL NEED TO HANDLE NETWORKS WITH PRIVATE DATA STORES ETC
+                    argv: process.argv.slice(0, 2).concat(cucumberArgs).concat('--tag', name),
+                    cwd: process.cwd(),
+                    stdout: process.stdout,
+                });
+
+                try {
+                    await fs.copy(chaincodeFolder, dockerChaincodeFolder);
+                    await network.build();
+                } catch (err) {
+                    reject(err);
+                }
+
+                const resp = await cli.run();
+
+                // await network.teardown();
+                // await fs.emptyDir(dockerChaincodeFolder);
+                // await fs.ensureFile(path.join(dockerChaincodeFolder, '.gitkeep'));
+
+                if (!resp.success) {
+                    cucumberErrors.push(name);
+                }
             }
 
-            const resp = await cli.run();
-
-            // await network.teardown();
-            // await fs.emptyDir(dockerChaincodeFolder);
-            // await fs.ensureFile(path.join(dockerChaincodeFolder, '.gitkeep'));
-
-            if (!resp.success) {
-                reject(new Error('Cucumber tests failed'));
+            if (cucumberErrors.length > 0) {
+                reject(new Error('Cucumber tests failed for networks: ' + cucumberErrors.join('\n')));
             }
 
             resolve();

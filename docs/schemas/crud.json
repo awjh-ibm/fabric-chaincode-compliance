@@ -1,0 +1,79 @@
+{
+    "contracts": {
+        "CRUDContract": {
+            "name": "CRUDContract",
+            "transactions": [
+                {
+                    "parameters": [
+                        {
+                            "name": "key",
+                            "schema": {
+                                "type": "string"
+                            }
+                        },
+                        {
+                            "name": "value",
+                            "schema": {
+                                "type": "string"
+                            }
+                        }
+                    ],
+                    "tag": [
+                        "submit"
+                    ],
+                    "name": "create"
+                },
+                {
+                    "parameters": [
+                        {
+                            "name": "param0",
+                            "schema": {
+                                "type": "string"
+                            }
+                        }
+                    ],
+                    "tag": [
+                        "submit"
+                    ],
+                    "name": "delete"
+                },
+                {
+                    "parameters": [
+                        {
+                            "name": "param0",
+                            "schema": {
+                                "type": "string"
+                            }
+                        }
+                    ],
+                    "tag": [],
+                    "name": "read",
+                    "returns": {
+                        "type": "string"
+                    }
+                },
+                {
+                    "parameters": [
+                        {
+                            "name": "key",
+                            "schema": {
+                                "type": "string"
+                            }
+                        },
+                        {
+                            "name": "value",
+                            "schema": {
+                                "type": "string"
+                            }
+                        }
+                    ],
+                    "tag": [
+                        "submit"
+                    ],
+                    "name": "update"
+                }
+            ]
+        }
+    },
+    "components": {}
+}

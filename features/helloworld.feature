@@ -1,4 +1,5 @@
 # hello world feature
+@single-org
 Feature: HelloWorld
 
     Background:

@@ -146,7 +146,7 @@ export class Chaincode {
             return data.toString();
         } catch (err) {
             console.log('ERROR', err);
-            throw new Error('GGRRRR');
+            throw err;
         }
     }
 
