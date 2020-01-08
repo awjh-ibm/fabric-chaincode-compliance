@@ -31,7 +31,8 @@ Once you have the new network structure you will then need to tag features that 
 - Network
     - Must operate using TLS
     - Profile defined in `configtx.yaml` for the genesis block must be called `Genesis`
-    - Organisation's MSP ID should be <ORG_NAME>MSP e.g. Org1MSP.
+    - Organisation's MSP ID should be `<ORG_NAME>MSP` e.g. Org1MSP.
+    - Organisations MSP Directory should be `crypto-config/peerOrganizations/<ORG_NAME>.com/msp`
 - Peers
     - Container name and peer name must match
     - Peer name must be of the form `peerN.<ORG_NAME>.com` where ORG_NAME is the snake case version of the organisation's name e.g. org1.

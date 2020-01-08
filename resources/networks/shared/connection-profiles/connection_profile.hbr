@@ -49,7 +49,7 @@
             "url": "grpcs://localhost:{{externalPort}}",
             "eventUrl": "grpcs://localhost:{{externalEventPort}}",
             "tlsCACerts": {
-                "path": "{{../cryptoConfigPath}}/peerOrganizations/org1.com/peers/peer0.org1.com/tls/ca.crt"
+                "path": "{{../cryptoConfigPath}}/peerOrganizations/org1.com/peers/{{name}}/tls/ca.crt"
             },
             "grpcOptions": {
                 "hostnameOverride": "{{name}}",

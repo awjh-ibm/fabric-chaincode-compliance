@@ -249,7 +249,7 @@ export class Network {
                         components.push({
                             externalPort: service.ports[0].split(':')[0],
                             name: serviceName,
-                            port: service.ports[0].split(':')[0],
+                            port: service.ports[0].split(':')[1],
                         });
                     }
                 }
@@ -263,7 +263,7 @@ export class Network {
 
         peers.forEach((peer) => {
             (peer as Peer).eventPort = peer.port + 2;
-            (peer as Peer).externalEventPort = peer.externalPort + 2;
+            (peer as Peer).externalEventPort = parseInt(peer.externalPort as any, 10) + 2;
         });
 
         return peers as Peer[];

@@ -28,6 +28,7 @@ export interface Profile {
 export interface Global extends NodeJS.Global {
     CHAINCODE_LANGUAGE: 'golang' | 'java' | 'node';
     CURRENT_NETWORK: Network;
+    LOGGING_LEVEL: 'info' | 'debug';
 }
 
 export interface Channel {

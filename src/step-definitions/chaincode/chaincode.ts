@@ -85,6 +85,7 @@ export class Chaincode {
                 break;
             } catch (err) {
                 if (i === attempts - 1) {
+                    console.log(err);
                     throw new Error('Waiting for chaincode to insantiate timedout');
                 }
                 await sleep(2000);
@@ -133,7 +134,7 @@ export class Chaincode {
 
         const gateway = new Gateway();
         await gateway.connect(org.ccp, { wallet: org.wallet, identity: identityName, discovery: { enabled: true, asLocalhost: true } });
-
+        // TODO why does the channel for this gateway sometimes have the wrong org's peers and no peers for this org
         const channel = await gateway.getNetwork(channelName);
 
         const contract = await channel.getContract(chaincodeName);

@@ -1,5 +1,5 @@
 # hello world feature
-@single-org
+@single-org @three-org
 Feature: HelloWorld
 
     Background:
@@ -9,7 +9,7 @@ Feature: HelloWorld
             | name        | value |
             | crud.CREATE | true  |
         And Organisation "Org1" has instantiated the chaincode "crud" on channel "mychannel"
-    
+
     Scenario: Do something
         When Organisation "Org1" submits against the chaincode "crud" the transaction "Create" on channel "mychannel" as "user1" with args:
             | somekey | somevalue |
