@@ -1,11 +1,15 @@
 import { TableDefinition } from 'cucumber';
-import { binding, given, then, when } from 'cucumber-tsflow/dist';
+import { binding } from 'cucumber-tsflow/dist';
 import { Gateway } from 'fabric-network';
 import * as path from 'path';
+import { given, then, when } from '../../decorators/steps';
 import { Policy } from '../../policy/policy';
 import { Docker } from '../../utils/docker';
+import { Logger } from '../../utils/logger';
 import { getEnvVarsForCli, sleep } from '../utils/functions';
 import { Workspace } from '../utils/workspace';
+
+const logger = Logger.getLogger('./src/step-definitions/chaincode.ts');
 
 @binding([Workspace])
 export class Chaincode {
@@ -53,7 +57,41 @@ export class Chaincode {
     }
 
     @given(/Organisation "(.*)" has instantiated the chaincode "(.*)" on channel "(.*)" calling "(.*)" with args:$/)
-    public async instantiate(orgName: string, chaincodeName: string, channelName: string, functionName: string, args: TableDefinition) {
+    public async instantiateWithArgs(orgName: string, chaincodeName: string, channelName: string, functionName: string, args: TableDefinition) {
+        await this.instantiate(orgName, chaincodeName, channelName, functionName, args);
+    }
+
+    @when(/Organisation "(.*)" (submit|evaluate)s against the chaincode "(.*)" the transaction "(.*)" on channel "(.*)" as "(.*)"$/)
+    public async whenSubmitNoArgs(
+        orgName: string, type: 'submit' | 'evaluate', chaincodeName: string, functionName: string, channelName: string, identityName: string,
+    ) {
+        await this.handleTransaction(orgName, type, chaincodeName, functionName, channelName, identityName, this.generateArgs(null));
+    }
+
+    @when(/Organisation "(.*)" (submit|evaluate)s against the chaincode "(.*)" the transaction "(.*)" on channel "(.*)" as "(.*)" with args:$/)
+    public async whenSubmit(
+        orgName: string, type: 'submit' | 'evaluate', chaincodeName: string, functionName: string, channelName: string, identityName: string,
+        args: TableDefinition,
+    ) {
+        await this.handleTransaction(orgName, type, chaincodeName, functionName, channelName, identityName, this.generateArgs(args));
+    }
+
+    @then(/Expecting result "(.*)" organisation "(.*)" (submit|evaluate)s against the chaincode "(.*)" the transaction "(.*)" on channel "(.*)" as "(.*)"$/)
+    public async thenSubmitWithArgs(
+        result: string, orgName: string, type: 'submit' | 'evaluate', chaincodeName: string, functionName: string, channelName: string, identityName: string,
+    ) {
+        await this.submitAndCheck(result, orgName, type, chaincodeName, functionName, channelName, identityName, null);
+    }
+
+    @then(/Expecting result "(.*)" organisation "(.*)" (submit|evaluate)s against the chaincode "(.*)" the transaction "(.*)" on channel "(.*)" as "(.*)" with args:$/)
+    public async thenSubmit(
+        result: string, orgName: string, type: 'submit' | 'evaluate', chaincodeName: string, functionName: string, channelName: string, identityName: string,
+        args: TableDefinition,
+    ) {
+        await this.submitAndCheck(result, orgName, type, chaincodeName, functionName, channelName, identityName, args);
+    }
+
+    private async instantiate(orgName: string, chaincodeName: string, channelName: string, functionName: string, args: TableDefinition) {
         const org = this.workspace.network.getOrganisation(orgName);
         const peer = org.peers[0];
 
@@ -93,30 +131,7 @@ export class Chaincode {
         }
     }
 
-    @when(/Organisation "(.*)" (submit|evaluate)s against the chaincode "(.*)" the transaction "(.*)" on channel "(.*)" as "(.*)"$/)
-    public async whenSubmitNoArgs(
-        orgName: string, type: 'submit' | 'evaluate', chaincodeName: string, functionName: string, channelName: string, identityName: string,
-    ) {
-        this.whenSubmit(orgName, type, chaincodeName, functionName, channelName, identityName, null);
-    }
-
-    @when(/Organisation "(.*)" (submit|evaluate)s against the chaincode "(.*)" the transaction "(.*)" on channel "(.*)" as "(.*)" with args:$/)
-    public async whenSubmit(
-        orgName: string, type: 'submit' | 'evaluate', chaincodeName: string, functionName: string, channelName: string, identityName: string,
-        args: TableDefinition,
-    ) {
-        await this.handleTransaction(orgName, type, chaincodeName, functionName, channelName, identityName, this.generateArgs(args));
-    }
-
-    @then(/Expecting result "(.*)" organisation "(.*)" (submit|evaluate)s against the chaincode "(.*)" the transaction "(.*)" on channel "(.*)" as "(.*)"$/)
-    public async thenSubmitWithArgs(
-        result: string, orgName: string, type: 'submit' | 'evaluate', chaincodeName: string, functionName: string, channelName: string, identityName: string,
-    ) {
-        await this.thenSubmit(result, orgName, type, chaincodeName, functionName, channelName, identityName, null);
-    }
-
-    @then(/Expecting result "(.*)" organisation "(.*)" (submit|evaluate)s against the chaincode "(.*)" the transaction "(.*)" on channel "(.*)" as "(.*)" with args:$/)
-    public async thenSubmit(
+    private async submitAndCheck(
         result: string, orgName: string, type: 'submit' | 'evaluate', chaincodeName: string, functionName: string, channelName: string, identityName: string,
         args: TableDefinition,
     ) {
@@ -130,23 +145,33 @@ export class Chaincode {
     private async handleTransaction(
         orgName: string, type: 'submit' | 'evaluate', chaincodeName: string, functionName: string, channelName: string, identityName: string, args: string[],
     ): Promise<string> {
+        logger.debug(`Handling transaction of type ${type}`);
+
         const org = this.workspace.network.getOrganisation(orgName);
 
         const gateway = new Gateway();
         await gateway.connect(org.ccp, { wallet: org.wallet, identity: identityName, discovery: { enabled: true, asLocalhost: true } });
-        // TODO why does the channel for this gateway sometimes have the wrong org's peers and no peers for this org
+
+        logger.debug('Gateway connected');
+
         const channel = await gateway.getNetwork(channelName);
 
+        logger.debug('Got channel', channelName);
+
         const contract = await channel.getContract(chaincodeName);
+
+        logger.debug('Got chaincode', chaincodeName);
 
         const tx = contract.createTransaction(functionName);
 
         try {
             const data = await tx[type](...args);
 
+            logger.debug('Got response', data.toString());
+
             return data.toString();
         } catch (err) {
-            console.log('ERROR', err);
+            logger.error('Transaction failed', err);
             throw err;
         }
     }

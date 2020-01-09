@@ -35,6 +35,12 @@ export class Logger {
         return logger;
     }
 
+    public static refreshLoggers() {
+        Object.keys(Logger.loggers).forEach((key) => {
+            Logger.getLogger(key);
+        });
+    }
+
     private static loggers: {[s: string]: winston.Logger} = {};
     private static transport: winston.transports.ConsoleTransportInstance;
 

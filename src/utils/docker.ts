@@ -1,7 +1,12 @@
 import { exec as nodeExec } from 'child_process';
 import { EOL } from 'os';
+import { Logger } from './logger';
+
+const logger = Logger.getLogger('./src/utils/docker.ts');
 
 async function exec(command: string, allowError: boolean = false): Promise<string> {
+    logger.debug(`[Allow error: ${allowError}] Executing: ${command}`);
+
     return new Promise((resolve, reject) => {
         nodeExec(command, (err, stdout) => {
             if (err !== null && !allowError) {

@@ -1,3 +1,4 @@
+import * as chalk from 'chalk';
 import * as cucumber from 'cucumber';
 import * as fs from 'fs-extra';
 import * as path from 'path';
@@ -63,20 +64,25 @@ const cmd: CommandModule = {
         global.CHAINCODE_LANGUAGE = args.language;
         global.LOGGING_LEVEL = args.loggingLevel;
 
+        Logger.refreshLoggers();
+
         return args.thePromise = new Promise(async (resolve, reject) => {
             const cucumberErrors = [];
 
             for (const name of DEFINED_NETWORKS) {
+                logger.info(chalk.cyan(`Creating network ${name}`));
+
                 const network = new Network(name);
                 global.CURRENT_NETWORK = network;
 
-                logger.info(`Creating network ${name}`);
-
                 try {
+                    logger.debug(`Copying chaincode (${chaincodeFolder}) to docker chaincode folder`);
+
                     await fs.copy(chaincodeFolder, dockerChaincodeFolder);
                     await network.build();
                 } catch (err) {
                     reject(err);
+                    return;
                 }
 
                 const argv = process.argv.slice(0, 2).concat(cucumberArgs).concat('--tag', '@' + name);
@@ -84,10 +90,10 @@ const cmd: CommandModule = {
                 const cli = new (cucumber as any).Cli({
                     argv,
                     cwd: process.cwd(),
-                    stdout: process.stdout,
+                    stdout: {write: () => null},
                 });
 
-                logger.info('Running cucumber tests');
+                logger.info(chalk.magenta('Running cucumber tests'));
 
                 const requireKeys = Object.keys(require.cache);
 
@@ -99,7 +105,7 @@ const cmd: CommandModule = {
 
                 const resp = await cli.run();
 
-                logger.info(`Tearing down network ${name}`);
+                logger.info(chalk.cyan(`Tearing down network ${name}`));
 
                 await network.teardown();
                 await fs.emptyDir(dockerChaincodeFolder);
@@ -112,6 +118,7 @@ const cmd: CommandModule = {
 
             if (cucumberErrors.length > 0) {
                 reject(new Error('Cucumber tests failed for networks: ' + cucumberErrors.join('\n')));
+                return;
             }
 
             resolve();

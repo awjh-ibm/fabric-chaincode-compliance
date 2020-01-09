@@ -1,5 +1,8 @@
 import { Global } from '../../interfaces/interfaces';
 import { Network } from '../../network/network';
+import { Logger } from '../../utils/logger';
+
+const logger = Logger.getLogger('./src/step-definitions/utils/workspace.ts');
 
 declare const global: Global;
 
@@ -21,6 +24,8 @@ export class Workspace {
     }
 
     public updateChaincodePolicy(chaincode: string, policy: string) {
+        logger.debug(`Setting endorsement policy for ${chaincode} to:`, policy);
+
         const config = this.getConfig(chaincode);
         config.policy = policy;
 
@@ -28,6 +33,8 @@ export class Workspace {
     }
 
     public updateChaincodeCollection(chaincode: string, collection: string) {
+        logger.debug(`Setting private collection for ${chaincode} to:`, collection);
+
         const config = this.getConfig(chaincode);
         config.collection = collection;
 

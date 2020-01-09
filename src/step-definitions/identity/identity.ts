@@ -1,7 +1,7 @@
 import { TableDefinition } from 'cucumber';
-import { binding, given } from 'cucumber-tsflow/dist';
+import { binding } from 'cucumber-tsflow/dist';
 import { Gateway, X509WalletMixin } from 'fabric-network';
-import * as fs from 'fs-extra';
+import { given } from '../../decorators/steps';
 import { Workspace } from '../utils/workspace';
 
 @binding([Workspace])
@@ -11,12 +11,16 @@ export class Identity {
     }
 
     @given(/Organisation "(.*)" has registered the identity "(.*)"$/)
-    public async registerUser(orgName: string, identityName: string) {
-        await this.registerUserWithAttr(orgName, identityName, null);
+    public async registerUserNoAttr(orgName: string, identityName: string) {
+        await this.registerUser(orgName, identityName, null);
     }
 
     @given(/Organisation "(.*)" has registered the identity "(.*)" with attributes:/)
     public async registerUserWithAttr(orgName: string, identityName: string, attributesTbl: TableDefinition) {
+        await this.registerUser(orgName, identityName, attributesTbl);
+    }
+
+    private async registerUser(orgName: string, identityName: string, attributesTbl: TableDefinition) {
         const org = this.workspace.network.getOrganisation(orgName);
 
         const wallet = org.wallet;

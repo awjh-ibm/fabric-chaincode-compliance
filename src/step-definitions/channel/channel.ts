@@ -1,8 +1,12 @@
-import { binding, given } from 'cucumber-tsflow/dist';
+import { binding } from 'cucumber-tsflow/dist';
+import { given } from '../../decorators/steps';
 import { Channel as ChannelIface, Org } from '../../interfaces/interfaces';
 import { Docker } from '../../utils/docker';
+import { Logger } from '../../utils/logger';
 import { getEnvVarsForCli } from '../utils/functions';
 import { Workspace } from '../utils/workspace';
+
+const logger = Logger.getLogger('./src/step-definitions/channel');
 
 @binding([Workspace])
 export class Channel {
@@ -13,7 +17,6 @@ export class Channel {
 
     @given(/Channel "(.*)" has been created using the profile "(.*)"$/)
     public async createAndJoin(channelName: string, profileName: string) {
-
         if (this.workspace.network === null) {
             throw new Error('Cannot create channel. No network deployed');
         }
@@ -33,6 +36,8 @@ export class Channel {
     }
 
     private async generateCrypto(channelName: string, profile: string, orgs: Org[]) {
+        logger.debug('Generating channel crypto');
+
         await Docker.exec(orgs[0].cli, `configtxgen -profile ${profile} -outputCreateChannelTx /etc/hyperledger/config/${channelName}.tx -channelID ${channelName}`);
 
         for (const org of orgs) {

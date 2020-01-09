@@ -6,6 +6,9 @@ import * as yaml from 'js-yaml';
 import * as path from 'path';
 import { BaseComponent, CA, Channel, Orderer, Org, Peer, Profile } from '../interfaces/interfaces';
 import { Docker } from '../utils/docker';
+import { Logger } from '../utils/logger';
+
+const logger = Logger.getLogger('./src/network/network.ts');
 
 export interface NetworkDetails {
     resourceFolder: string;
@@ -129,6 +132,8 @@ export class Network {
     }
 
     private parseOrgs(): Org[] {
+        logger.debug('Parsing orgs');
+
         const rawCryptoConfig = fs.readFileSync(path.join(this.details.resourceFolder, 'crypto-material/crypto-config.yaml'), 'utf8');
         const cryptoConfig = yaml.safeLoad(rawCryptoConfig);
 
@@ -148,6 +153,8 @@ export class Network {
     }
 
     private parseProfiles(): Map<string, Profile> {
+        logger.debug('Parsing profiles');
+
         const rawConfigTx = fs.readFileSync(path.join(this.details.resourceFolder, 'crypto-material/configtx.yaml'), 'utf8');
         const configTx = yaml.safeLoad(rawConfigTx);
 
@@ -180,10 +187,15 @@ export class Network {
     }
 
     private async createWallet(org: string) {
+        logger.debug(`Creating wallet for ${org}`);
         await fs.mkdirp(this.getWalletPath(org));
+
+        logger.debug('Created wallet', this.getWalletPath(org));
     }
 
     private async createCcp(org: Org) {
+        logger.debug(`Creating connection profile for ${org.name}`);
+
         const ccpPath = this.getCcpPath(org.name);
 
         if (!(await fs.pathExists(ccpPath))) {
@@ -198,6 +210,8 @@ export class Network {
             await fs.writeFile(ccpPath, tmpl(orgClone));
         }
 
+        logger.debug('Created connection profile', ccpPath);
+
         return ccpPath;
     }
 
@@ -209,6 +223,8 @@ export class Network {
     }
 
     private parseOrderers(): Orderer[] {
+        logger.debug('Parsing network orderers');
+
         const rawDockerCompose = fs.readFileSync(path.join(this.details.resourceFolder, 'docker-compose/docker-compose.yaml'), 'utf8');
         const dockerCompose = yaml.safeLoad(rawDockerCompose);
 
@@ -226,6 +242,8 @@ export class Network {
                 }
             }
         }
+
+        logger.debug('Parsed orderers', orderers);
 
         return orderers;
     }
@@ -247,9 +265,9 @@ export class Network {
 
                     if (regex.test(serviceName)) {
                         components.push({
-                            externalPort: service.ports[0].split(':')[0],
+                            externalPort: parseInt(service.ports[0].split(':')[0], 10),
                             name: serviceName,
-                            port: service.ports[0].split(':')[1],
+                            port: parseInt(service.ports[0].split(':')[1], 10),
                         });
                     }
                 }
@@ -259,28 +277,34 @@ export class Network {
     }
 
     private parsePeers(org: string): Peer[] {
+        logger.debug(`Parsing peers for ${org}`);
         const peers = this.parseComponent(org, 'peer');
 
         peers.forEach((peer) => {
             (peer as Peer).eventPort = peer.port + 2;
-            (peer as Peer).externalEventPort = parseInt(peer.externalPort as any, 10) + 2;
+            (peer as Peer).externalEventPort = peer.externalPort + 2;
         });
 
+        logger.debug(`Parsed peers for ${org}`, peers);
         return peers as Peer[];
     }
 
     private parseCAs(org: string): CA[] {
+        logger.debug(`Parsing CAs for ${org}`);
         const cas = this.parseComponent(org, 'ca');
         cas.forEach((ca) => {
             (ca as CA).trustedRootCert = path.join(this.details.resourceFolder, `crypto-material/crypto-config/peerOrganizations/${orgToSmall(org)}.com/tlsca/${ca.name}-cert.pem`);
         });
 
+        logger.debug(`Parsed CAs dor ${org}`, cas);
         return cas as CA[];
     }
 
     private async teardownExisting() {
+        logger.debug('Finding existing networks');
         const upNetworks = await Docker.projectsUp(...DEFINED_NETWORKS);
         for (const network of upNetworks) {
+            logger.debug(`Removing existing network ${network}`);
             await this.teardownNetwork(network);
         }
 
@@ -288,6 +312,8 @@ export class Network {
     }
 
     private async teardownNetwork(network: string) {
+        logger.debug(`Tearing down network ${network}`);
+
         await Docker.composeDown(path.join(networkResources, network, networkComposeFile), network);
         await this.cleanupCrypto(network);
         await fs.remove(path.join(this.details.resourceFolder, 'wallets'));
@@ -299,9 +325,18 @@ export class Network {
         process.env.FABRIC_COUCHDB_TAG = ':0.4.15';
         process.env.FABRIC_DEBUG = 'info';
         process.env.NETWORK_FOLDER = this.details.resourceFolder;
+
+        logger.debug(`Configured environment variables:
+            FABRIC_IMG_TAG: ${process.env.FABRIC_IMG_TAG}
+            FABRIC_COUCHDB_TAG: ${process.env.FABRIC_COUCHDB_TAG}
+            FABRIC_DEBUG: ${process.env.FABRIC_DEBUG}
+            NETWORK_FOLDER: ${process.env.NETWORK_FOLDER}`,
+        );
     }
 
     private async generateCrypto() {
+        logger.debug('Generating crypto materials');
+
         await Docker.composeUp(cliComposeFile);
 
         await Docker.exec('cli', 'cryptogen generate --config=/etc/hyperledger/config/crypto-config.yaml --output /etc/hyperledger/config/crypto-config');
@@ -313,6 +348,8 @@ export class Network {
     }
 
     private async cleanupCrypto(network: string) {
+        logger.debug('Removing crypto materials');
+
         process.env.NETWORK_FOLDER = path.join(networkResources, network);
 
         await Docker.composeUp(cliComposeFile);
@@ -321,6 +358,7 @@ export class Network {
     }
 
     private async cleanupChaincode() {
+        logger.debug('Cleaning up any lingering chaincode');
         await Docker.removeContainers('dev-peer');
         await Docker.removeImages('dev-peer');
     }
