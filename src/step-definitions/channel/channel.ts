@@ -6,7 +6,7 @@ import { Logger } from '../../utils/logger';
 import { getEnvVarsForCli } from '../utils/functions';
 import { Workspace } from '../utils/workspace';
 
-const logger = Logger.getLogger('./src/step-definitions/channel');
+const logger = Logger.getLogger('./src/step-definitions/channel/channel.ts');
 
 @binding([Workspace])
 export class Channel {

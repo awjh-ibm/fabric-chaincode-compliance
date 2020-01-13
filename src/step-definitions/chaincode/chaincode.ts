@@ -9,7 +9,7 @@ import { Logger } from '../../utils/logger';
 import { getEnvVarsForCli, sleep } from '../utils/functions';
 import { Workspace } from '../utils/workspace';
 
-const logger = Logger.getLogger('./src/step-definitions/chaincode.ts');
+const logger = Logger.getLogger('./src/step-definitions/chaincode/chaincode.ts');
 
 @binding([Workspace])
 export class Chaincode {

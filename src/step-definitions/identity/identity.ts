@@ -2,7 +2,10 @@ import { TableDefinition } from 'cucumber';
 import { binding } from 'cucumber-tsflow/dist';
 import { Gateway, X509WalletMixin } from 'fabric-network';
 import { given } from '../../decorators/steps';
+import { Logger } from '../../utils/logger';
 import { Workspace } from '../utils/workspace';
+
+const logger = Logger.getLogger('./src/step-definitions/identity/identity.ts');
 
 @binding([Workspace])
 export class Identity {

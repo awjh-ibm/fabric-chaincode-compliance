@@ -4,7 +4,7 @@ import * as fs from 'fs-extra';
 import * as Handlebars from 'handlebars';
 import * as yaml from 'js-yaml';
 import * as path from 'path';
-import { BaseComponent, CA, Channel, Orderer, Org, Peer, Profile } from '../interfaces/interfaces';
+import { BaseComponent, CA, Channel, DB, Orderer, Org, Peer, Profile } from '../interfaces/interfaces';
 import { Docker } from '../utils/docker';
 import { Logger } from '../utils/logger';
 
@@ -25,7 +25,8 @@ const networkResources = path.resolve(__dirname, '../../resources/networks');
 const networkComposeFile = 'docker-compose/docker-compose.yaml';
 const cliComposeFile = path.join(networkResources, 'shared', 'docker-compose/docker-compose-cli.yaml');
 
-export const DEFINED_NETWORKS = fs.readdirSync(networkResources).filter((name) => name !== 'shared' && name !== 'scripts');
+export const DEFINED_NETWORKS = ['single-org'];
+// export const DEFINED_NETWORKS = fs.readdirSync(networkResources).filter((name) => name !== 'shared' && name !== 'scripts');
 
 export class Network {
     private name: string;
@@ -91,6 +92,10 @@ export class Network {
         return this.channels.get(channel);
     }
 
+    public getOrganisations(): Org[] {
+        return this.config.organisations;
+    }
+
     public getOrganisation(orgName: string): Org {
         for (const org of this.config.organisations) {
             if (org.name === orgName) {
@@ -142,11 +147,14 @@ export class Network {
                 cas: this.parseCAs(org.Name),
                 ccp: this.getCcpPath(org.Name),
                 cli: orgToSmall(org.Name) + '_cli',
+                db: this.parseDB(org.Name),
                 mspid: org.Name + 'MSP',
                 name: org.Name,
                 peers: this.parsePeers(org.Name),
                 wallet: new FileSystemWallet(this.getWalletPath(org.Name)),
             };
+
+            logger.debug(`Parsed org ${org.Name}`, orgIface);
 
             return orgIface;
         });
@@ -168,6 +176,7 @@ export class Network {
                             cas: this.parseCAs(name),
                             ccp: this.getCcpPath(name),
                             cli: orgToSmall(name) + '_cli',
+                            db: this.parseDB(name),
                             mspid: org.Name,
                             name,
                             peers: this.parsePeers(name),
@@ -248,18 +257,25 @@ export class Network {
         return orderers;
     }
 
-    private parseComponent(org: string, type: 'peer' | 'ca'): BaseComponent[] {
+    private parseComponent(org: string, type: 'peer' | 'ca' | 'db'): BaseComponent[] {
         const rawDockerCompose = fs.readFileSync(path.join(this.details.resourceFolder, 'docker-compose/docker-compose.yaml'), 'utf8');
         const dockerCompose = yaml.safeLoad(rawDockerCompose);
 
         const components: BaseComponent[] = [];
 
-        const identifier = type === 'peer' ? 'peer[0-9]*' : 'tlsca';
+        let identifier;
+
+        switch (type) {
+            case 'peer': identifier = 'peer[0-9]'; break;
+            case 'ca': identifier = 'tlsca'; break;
+            case 'db': identifier = '(couch|level)db'; break;
+            default: throw new Error('Invalid type ' + type);
+        }
 
         for (const serviceName in dockerCompose.services) {
             if (dockerCompose.services.hasOwnProperty(serviceName)) {
                 const service = dockerCompose.services[serviceName];
-                if (service.hasOwnProperty('extends') && service.extends.hasOwnProperty('service') && service.extends.service === type) {
+                if (service.hasOwnProperty('extends') && service.extends.hasOwnProperty('service') && (service.extends.service as string).endsWith(type)) {
                     const pattern = `${identifier}\\.${orgToSmall(org)}\\.com`;
                     const regex = new RegExp(pattern);
 
@@ -298,6 +314,20 @@ export class Network {
 
         logger.debug(`Parsed CAs dor ${org}`, cas);
         return cas as CA[];
+    }
+
+    private parseDB(org: string): DB {
+        logger.debug(`Parsing DB for ${org}`);
+        const dbs = this.parseComponent(org, 'db');
+
+        if (dbs.length !== 1) {
+            return null;
+        }
+
+        const db = dbs[0];
+        (db as DB).type = db.name.startsWith('couch') ? 'couch' : 'level';
+
+        return db as DB;
     }
 
     private async teardownExisting() {

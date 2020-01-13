@@ -1,10 +1,10 @@
+import * as chalk from 'chalk';
 import { HookScenarioResult, pickle, SourceLocation } from 'cucumber';
 import { after, before, binding } from 'cucumber-tsflow/dist';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import { Logger } from '../utils/logger';
 import { Workspace } from './utils/workspace';
-import * as chalk from 'chalk';
 
 const logger = Logger.getLogger('./src/step-definitions/hooks.ts');
 

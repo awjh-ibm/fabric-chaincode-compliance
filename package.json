@@ -36,6 +36,7 @@
     "typescript": "^3.7.2"
   },
   "dependencies": {
+    "assert": "^2.0.0",
     "chai": "^4.2.0",
     "chalk": "^3.0.0",
     "cucumber": "^6.0.5",
@@ -47,6 +48,7 @@
     "fs-extra": "^8.1.0",
     "handlebars": "^4.5.3",
     "js-yaml": "^3.13.1",
+    "nano": "^8.1.0",
     "util": "^0.12.1",
     "winston": "^3.2.1",
     "yargs": "^15.0.2"

@@ -9,6 +9,7 @@ export interface Org {
     cas: CA[];
     wallet: FileSystemWallet;
     ccp: string;
+    db: DB;
 }
 
 export interface BaseComponent {
@@ -45,4 +46,8 @@ export interface Peer extends BaseComponent {
 // tslint:disable-next-line: no-empty-interface
 export interface CA extends BaseComponent {
     trustedRootCert: string;
+}
+
+export interface DB extends BaseComponent {
+    type: 'level' | 'couch';
 }
