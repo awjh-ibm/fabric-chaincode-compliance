@@ -26,10 +26,6 @@ const options = {
         required: true,
         type: 'string',
     },
-    features: {
-        description: 'Alternative set of feature files to use, array of globs',
-        type: 'array',
-    },
     language: {
         alias: 'l',
         choices: ['golang', 'java', 'node'],
@@ -41,12 +37,6 @@ const options = {
         choices: ['info', 'debug'],
         default: 'info',
         description: 'Set logging level',
-    },
-    profile: {
-        alias: 'p',
-        default: ['default'],
-        description: 'Which of the inbuilt test profiles to run',
-        type: 'string',
     },
 };
 
@@ -85,7 +75,9 @@ const cmd: CommandModule = {
                     return;
                 }
 
-                const argv = process.argv.slice(0, 2).concat(cucumberArgs).concat('--tag', '@' + name);
+                const argv = process.argv.slice(0, 2).concat(cucumberArgs).concat('--tags', `@${name}`).concat('--tags', `not @not-${args.language}`);
+
+                logger.info(argv);
 
                 const cli = new (cucumber as any).Cli({
                     argv,

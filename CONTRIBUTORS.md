@@ -31,17 +31,20 @@ Once you have the new network structure you will then need to tag features that 
 - Network
     - Must operate using TLS
     - Profile defined in `configtx.yaml` for the genesis block must be called `Genesis`
-    - Organisation's MSP ID should be `<ORG_NAME>MSP` e.g. Org1MSP.
+    - Organisation's MSP ID should be `<ORG_NAME>MSP` e.g. Org1MSP
     - Organisations MSP Directory should be `crypto-config/peerOrganizations/<ORG_NAME>.com/msp`
 - Peers
     - Container name and peer name must match
-    - Peer name must be of the form `peerN.<ORG_NAME>.com` where ORG_NAME is the snake case version of the organisation's name e.g. org1.
+    - Peer name must be of the form `peerN.<ORG_NAME>.com` where ORG_NAME is the snake case version of the organisation's name e.g. org1
     - Must extend `peer` service from `shared/docker-compose/docker-compose-base.yaml`
 - Certificate Authorities
     - Container name and CA server name must match
-    - CA name must be of the form `tlsca.<ORG_NAME>.com` where ORG_NAME is the snake case version of the organisation's name e.g. org1.
+    - CA name must be of the form `tlsca.<ORG_NAME>.com` where ORG_NAME is the snake case version of the organisation's name e.g. org1
     - Must extend `ca` service from `shared/docker-compose/docker-compose-base.yaml`
+- Databases
+    - DB name must be of the form `<TYPE>db.<ORG_NAME>.com` when ORG_NAME is the snake case version of the organisation's name e.g. org1 ad the type is couch or level
+    - Must extend the `<TYPE>db` service from `shared/docker-compose/docker-compose-base.yaml` e.g. couchdb
 - CLI
-    - All organisations require a CLI. This is used by the step definitions to issue peer commands.
-    - CLI name must be of the form `<ORG_NAME>_cli` where ORG_NAME is the snake case version of the organisation's name e.g. org1.
+    - All organisations require a CLI. This is used by the step definitions to issue peer commands
+    - CLI name must be of the form `<ORG_NAME>_cli` where ORG_NAME is the snake case version of the organisation's name e.g. org1
     - Must extend `clibase` service from `shared/docker-compose/docker-compose-base.yaml`

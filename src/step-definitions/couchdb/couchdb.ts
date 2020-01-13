@@ -14,7 +14,7 @@ export class CouchDB {
         // construct
     }
 
-    @then(/The world state for the chaincode "(.*)" on channel "(.*)" should contain "(.*)" for key "(.*)"/)
+    @then(/The world state for the chaincode ['"](.*)['"] on channel ['"](.*)['"] should contain ['"](.*)['"] for key ['"](.*)['"]/)
     public async readWorldState(chaincodeName: string, channelName: string, value: string, key: string) {
         for (const org of this.workspace.network.getOrganisations()) {
             logger.info(`Reading world state for ${org.name}`);
@@ -31,7 +31,7 @@ export class CouchDB {
         }
     }
 
-    @then(/The world state for the chaincode "(.*)" on channel "(.*)" should not have key "(.*)"/)
+    @then(/The world state for the chaincode ['"](.*)['"] on channel ['"](.*)['"] should not have key ['"](.*)['"]/)
     public async isDeletedFromWorldState(chaincodeName: string, channelName: string, key: string) {
         for (const org of this.workspace.network.getOrganisations()) {
             if (!org.db) {

@@ -1,6 +1,7 @@
 import { TableDefinition } from 'cucumber';
 import { binding } from 'cucumber-tsflow/dist';
 import { Gateway } from 'fabric-network';
+import * as _ from 'lodash';
 import * as path from 'path';
 import { given, then, when } from '../../decorators/steps';
 import { Policy } from '../../policy/policy';
@@ -18,7 +19,7 @@ export class Chaincode {
         // construct
     }
 
-    @given(/All peers on channel "(.*)" have installed the chaincode "(.*)"$/)
+    @given(/All peers on channel ['"](.*)['"] have installed the chaincode ['"](.*)['"]$/)
     public async installAll(channelName: string, chaincodeName: string) {
         const channel = this.workspace.network.getChannel(channelName);
 
@@ -37,38 +38,38 @@ export class Chaincode {
         }
     }
 
-    @given(/Chaincode "(.*)" when instantiated on channel "(.*)" will use endorsement policy "(.*)"$/)
+    @given(/Chaincode ['"](.*)['"] when instantiated on channel ['"](.*)['"] will use endorsement policy ['"](.*)['"]$/)
     public async configureEndorsementPolicy(chaincodeName: string, channelName: string, policyName: string) {
         const policy = Policy.build(policyName, this.workspace.network.getChannel(channelName));
 
         this.workspace.updateChaincodePolicy(chaincodeName, policy);
     }
 
-    @given(/Chaincode "(.*)" when instantiated on channel "(.*)" will use private data collection "(.*)"$/)
-    public async configurePrivateCollection(chaincodeName: string, _: string, collectionFile: string) {
+    @given(/Chaincode ['"](.*)['"] when instantiated on channel ['"](.*)['"] will use private data collection ['"](.*)['"]$/)
+    public async configurePrivateCollection(chaincodeName: string, __: string, collectionFile: string) {
         const collection = path.join(__dirname, '../../..', 'resources/private_collections', collectionFile);
 
         this.workspace.updateChaincodeCollection(chaincodeName, collection);
     }
 
-    @given(/Organisation "(.*)" has instantiated the chaincode "(.*)" on channel "(.*)"$/)
+    @given(/Organisation ['"](.*)['"] has instantiated the chaincode ['"](.*)['"] on channel ['"](.*)['"]$/)
     public async instantiateNoArgs(orgName: string, chaincodeName: string, channelName: string) {
         await this.instantiate(orgName, chaincodeName, channelName, null, null);
     }
 
-    @given(/Organisation "(.*)" has instantiated the chaincode "(.*)" on channel "(.*)" calling "(.*)" with args:$/)
+    @given(/Organisation ['"](.*)['"] has instantiated the chaincode ['"](.*)['"] on channel ['"](.*)['"] calling ['"](.*)['"] with args:$/)
     public async instantiateWithArgs(orgName: string, chaincodeName: string, channelName: string, functionName: string, args: TableDefinition) {
         await this.instantiate(orgName, chaincodeName, channelName, functionName, args);
     }
 
-    @when(/Organisation "(.*)" (submit|evaluate)s against the chaincode "(.*)" the transaction "(.*)" on channel "(.*)" as "(.*)"$/)
+    @when(/Organisation ['"](.*)['"] (submit|evaluate)s against the chaincode ['"](.*)['"] the transaction ['"](.*)['"] on channel ['"](.*)['"] as ['"](.*)['"]$/)
     public async whenSubmitNoArgs(
         orgName: string, type: 'submit' | 'evaluate', chaincodeName: string, functionName: string, channelName: string, identityName: string,
     ) {
         await this.handleTransaction(orgName, type, chaincodeName, functionName, channelName, identityName, this.generateArgs(null));
     }
 
-    @when(/Organisation "(.*)" (submit|evaluate)s against the chaincode "(.*)" the transaction "(.*)" on channel "(.*)" as "(.*)" with args:$/)
+    @when(/Organisation ['"](.*)['"] (submit|evaluate)s against the chaincode ['"](.*)['"] the transaction ['"](.*)['"] on channel ['"](.*)['"] as ['"](.*)['"] with args:$/)
     public async whenSubmit(
         orgName: string, type: 'submit' | 'evaluate', chaincodeName: string, functionName: string, channelName: string, identityName: string,
         args: TableDefinition,
@@ -76,15 +77,15 @@ export class Chaincode {
         await this.handleTransaction(orgName, type, chaincodeName, functionName, channelName, identityName, this.generateArgs(args));
     }
 
-    @then(/Expecting result "(.*)" organisation "(.*)" (submit|evaluate)s against the chaincode "(.*)" the transaction "(.*)" on channel "(.*)" as "(.*)"$/)
-    public async thenSubmitWithArgs(
+    @then(/Expecting result ['"](.*)['"] organisation ['"](.*)['"] (submit|evaluate)s against the chaincode ['"](.*)['"] the transaction ['"](.*)['"] on channel ['"](.*)['"] as ['"](.*)['"]$/)
+    public async thenSubmit(
         result: string, orgName: string, type: 'submit' | 'evaluate', chaincodeName: string, functionName: string, channelName: string, identityName: string,
     ) {
         await this.submitAndCheck(result, orgName, type, chaincodeName, functionName, channelName, identityName, null);
     }
 
-    @then(/Expecting result "(.*)" organisation "(.*)" (submit|evaluate)s against the chaincode "(.*)" the transaction "(.*)" on channel "(.*)" as "(.*)" with args:$/)
-    public async thenSubmit(
+    @then(/Expecting result ['"](.*)['"] organisation ['"](.*)['"] (submit|evaluate)s against the chaincode ['"](.*)['"] the transaction ['"](.*)['"] on channel ['"](.*)['"] as ['"](.*)['"] with args:$/)
+    public async thenSubmitWithArgs(
         result: string, orgName: string, type: 'submit' | 'evaluate', chaincodeName: string, functionName: string, channelName: string, identityName: string,
         args: TableDefinition,
     ) {
@@ -137,7 +138,7 @@ export class Chaincode {
     ) {
         const data = await this.handleTransaction(orgName, type, chaincodeName, functionName, channelName, identityName, this.generateArgs(args));
 
-        if (data !== result) {
+        if (data !== result && !this.jsonResponseEqual(data, result)) {
             throw new Error(`Result did not match expected. Wanted ${result} got ${data}`);
         }
     }
@@ -203,5 +204,19 @@ export class Chaincode {
         data = data.substring(0, data.length - 2) + ']';
 
         return data;
+    }
+
+    private jsonResponseEqual(actual: string, expected: string): boolean {
+        let actualJSON;
+        let expectedJSON;
+
+        try {
+            actualJSON = JSON.parse(actual);
+            expectedJSON = JSON.parse(expected);
+        } catch (err) {
+            return false;
+        }
+
+        return _.isEqual(actualJSON, expectedJSON);
     }
 }

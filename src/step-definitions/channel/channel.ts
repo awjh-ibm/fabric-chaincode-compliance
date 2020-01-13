@@ -15,7 +15,7 @@ export class Channel {
         // construct
     }
 
-    @given(/Channel "(.*)" has been created using the profile "(.*)"$/)
+    @given(/Channel ['"](.*)['"] has been created using the profile ['"](.*)['"]$/)
     public async createAndJoin(channelName: string, profileName: string) {
         if (this.workspace.network === null) {
             throw new Error('Cannot create channel. No network deployed');

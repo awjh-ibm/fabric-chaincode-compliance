@@ -312,7 +312,7 @@ export class Network {
             (ca as CA).trustedRootCert = path.join(this.details.resourceFolder, `crypto-material/crypto-config/peerOrganizations/${orgToSmall(org)}.com/tlsca/${ca.name}-cert.pem`);
         });
 
-        logger.debug(`Parsed CAs dor ${org}`, cas);
+        logger.debug(`Parsed CAs For ${org}`, cas);
         return cas as CA[];
     }
 
@@ -326,6 +326,8 @@ export class Network {
 
         const db = dbs[0];
         (db as DB).type = db.name.startsWith('couch') ? 'couch' : 'level';
+
+        logger.debug(`Parsed DB for ${org}`, db);
 
         return db as DB;
     }

@@ -13,12 +13,12 @@ export class Identity {
         // construct
     }
 
-    @given(/Organisation "(.*)" has registered the identity "(.*)"$/)
+    @given(/Organisation ['"](.*)['"] has registered the identity ['"](.*)['"]$/)
     public async registerUserNoAttr(orgName: string, identityName: string) {
         await this.registerUser(orgName, identityName, null);
     }
 
-    @given(/Organisation "(.*)" has registered the identity "(.*)" with attributes:/)
+    @given(/Organisation ['"](.*)['"] has registered the identity ['"](.*)['"] with attributes:/)
     public async registerUserWithAttr(orgName: string, identityName: string, attributesTbl: TableDefinition) {
         await this.registerUser(orgName, identityName, attributesTbl);
     }
@@ -31,7 +31,8 @@ export class Identity {
         const identityExists = await wallet.exists(identityName);
 
         if (identityExists) {
-            throw new Error(`Identity "${identityName}" already exists for organisation "${orgName}"`);
+            logger.debug(`Identity "${identityName}" already exists for organisation "${orgName}"`);
+            return;
         }
 
         const attrs = [];
