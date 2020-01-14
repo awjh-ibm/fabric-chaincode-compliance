@@ -27,9 +27,3 @@ The tool can then be run as follows
 ```
 fabric-chaincode-compliance --chaincode-dir <PATH_TO_CHAINCODE> --language <CHAINCODE_LANGUAGE>
 ```
-
-## Defining chaincode for use with the tool
-The tool is structured such that the chaincodes are referenced in the features by their folder name. Therefore in your supplied chaincode directory you will require your chaincode to be in folders of these names. The current chaincodes which are run are:
-- simple
-
-Since the chaincodes will be run against a fixed set of features which provide standard function calls and arguments they must have endpoints to match the calls made in these features. The structures are defined for each chaincode in the [schemas folder](./docs/schemas).
