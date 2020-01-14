@@ -26,6 +26,10 @@ const options = {
         required: true,
         type: 'string',
     },
+    'chaincode-override': {
+        description: 'Override the default folder for a given chaincode format {<NAME>: <FOLDER>}',
+        type: 'object',
+    },
     language: {
         alias: 'l',
         choices: ['golang', 'java', 'node'],
@@ -37,6 +41,10 @@ const options = {
         choices: ['info', 'debug'],
         default: 'info',
         description: 'Set logging level',
+    },
+    tags: {
+        description: 'Specific tags to run',
+        type: 'string',
     },
 };
 
@@ -69,15 +77,33 @@ const cmd: CommandModule = {
                     logger.debug(`Copying chaincode (${chaincodeFolder}) to docker chaincode folder`);
 
                     await fs.copy(chaincodeFolder, dockerChaincodeFolder);
+
+                    if (args.chaincodeOverride) {
+                        let overrides;
+                        try {
+                            overrides = JSON.parse(args.chaincodeOverride);
+                        } catch (err) {
+                            throw new Error('Option chaincode-override must be JSON');
+                        }
+
+                        for (const key in overrides) {
+                            if (overrides.hasOwnProperty(key)) {
+                                await fs.copy(path.resolve(process.cwd(), overrides[key]), path.join(dockerChaincodeFolder, key));
+                            }
+                        }
+                    }
+
                     await network.build();
                 } catch (err) {
                     reject(err);
                     return;
                 }
 
-                const argv = process.argv.slice(0, 2).concat(cucumberArgs).concat('--tags', `@${name}`).concat('--tags', `not @not-${args.language}`);
+                let argv = process.argv.slice(0, 2).concat(cucumberArgs).concat('--tags', `@${name}`).concat('--tags', `not @not-${args.language}`);
 
-                logger.info(argv);
+                if (args.tags) {
+                    argv = argv.concat('--tags', args.tags);
+                }
 
                 const cli = new (cucumber as any).Cli({
                     argv,
@@ -97,15 +123,15 @@ const cmd: CommandModule = {
 
                 const resp = await cli.run();
 
+                if (!resp.success) {
+                    cucumberErrors.push(name);
+                }
+
                 logger.info(chalk.cyan(`Tearing down network ${name}`));
 
                 await network.teardown();
                 await fs.emptyDir(dockerChaincodeFolder);
                 await fs.ensureFile(path.join(dockerChaincodeFolder, '.gitkeep'));
-
-                if (!resp.success) {
-                    cucumberErrors.push(name);
-                }
             }
 
             if (cucumberErrors.length > 0) {

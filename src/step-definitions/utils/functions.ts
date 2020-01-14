@@ -1,3 +1,4 @@
+import * as _ from 'lodash';
 import { Peer } from '../../interfaces/interfaces';
 
 export function getEnvVarsForCli(peer: Peer) {
@@ -17,4 +18,18 @@ export async function sleep(time: number) {
             resolve();
         }, time);
     });
+}
+
+export function jsonResponseEqual(actual: string, expected: string): boolean {
+    let actualJSON;
+    let expectedJSON;
+
+    try {
+        actualJSON = JSON.parse(actual);
+        expectedJSON = JSON.parse(expected);
+    } catch (err) {
+        return false;
+    }
+
+    return _.isEqual(actualJSON, expectedJSON);
 }

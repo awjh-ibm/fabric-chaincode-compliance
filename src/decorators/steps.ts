@@ -1,5 +1,6 @@
 import * as chalk from 'chalk';
 import { given as tsFlowGiven, then as tsFlowThen, when as tsFlowWhen } from 'cucumber-tsflow/dist';
+import { Workspace } from '../step-definitions/utils/workspace';
 import { Logger } from '../utils/logger';
 
 const logger = Logger.getLogger('./src/decorators.ts');
@@ -11,15 +12,17 @@ function addLogging(type: 'given' | 'then' | 'when', stepPattern: RegExp | strin
         const orginalMethod = descriptor.value;
 
         descriptor.value = function(...args: any[]) {
+            const scenarios = (this.workspace as Workspace).feature.scenarios;
+            const scenario = scenarios[scenarios.length - 1];
+
+            const step = scenario.steps.find((scenarioStep) => {
+                return (stepPattern as RegExp).test(scenarioStep.text) && !scenarioStep.complete;
+            });
+
+            step.complete = true;
+
             if (logger.level === 'debug') {
-                let step = stepPattern.toString();
-                step = step.substring(1, step.length - 1);
-
-                step = step.split(/\(.*?\)/).map((el, idx, arr) => {
-                    return idx < args.length && idx !== arr.length - 1 ? el + `${args[idx]}` : el;
-                }).join('');
-
-                logger.debug(chalk.yellow(`[${type}] ${step}`));
+                logger.debug(chalk.yellow(`[${type}] ${step.text}`));
             }
 
             return orginalMethod.apply(this, args);

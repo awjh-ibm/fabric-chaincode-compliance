@@ -1,13 +1,12 @@
 import { TableDefinition } from 'cucumber';
 import { binding } from 'cucumber-tsflow/dist';
 import { Gateway } from 'fabric-network';
-import * as _ from 'lodash';
 import * as path from 'path';
 import { given, then, when } from '../../decorators/steps';
 import { Policy } from '../../policy/policy';
 import { Docker } from '../../utils/docker';
 import { Logger } from '../../utils/logger';
-import { getEnvVarsForCli, sleep } from '../utils/functions';
+import { getEnvVarsForCli, jsonResponseEqual, sleep } from '../utils/functions';
 import { Workspace } from '../utils/workspace';
 
 const logger = Logger.getLogger('./src/step-definitions/chaincode/chaincode.ts');
@@ -26,7 +25,7 @@ export class Chaincode {
         let prefix = '';
 
         if (this.workspace.language !== 'golang') {
-            prefix = '/gopath/src/';
+            prefix = '/opt/gopath/src/';
         } else {
             await Docker.exec(channel.organisations[0].cli, `bash -c 'cd /opt/gopath/src/github.com/hyperledger/fabric-chaincode-compliance/${chaincodeName} && GO111MODULE=on GOCACHE=on go mod vendor'`);
         }
@@ -77,6 +76,37 @@ export class Chaincode {
         await this.handleTransaction(orgName, type, chaincodeName, functionName, channelName, identityName, this.generateArgs(args));
     }
 
+    @then(/Expecting an error organisation ['"](.*)['"] (submit|evaluate)s against the chaincode ['"](.*)['"] the transaction ['"](.*)['"] on channel ['"](.*)['"] as ['"](.*)['"]$/)
+    public async whenSubmitError(
+        orgName: string, type: 'submit' | 'evaluate', chaincodeName: string, functionName: string, channelName: string, identityName: string,
+    ) {
+        try {
+            await this.handleTransaction(orgName, type, chaincodeName, functionName, channelName, identityName, this.generateArgs(null), true);
+            throw new Error('Expected transaction to fail but was successful');
+        } catch (err) {
+            if (err.message === 'Expected transaction to fail but was successful') {
+                throw err;
+            }
+            return;
+        }
+    }
+
+    @then(/Expecting an error organisation ['"](.*)['"] (submit|evaluate)s against the chaincode ['"](.*)['"] the transaction ['"](.*)['"] on channel ['"](.*)['"] as ['"](.*)['"] with args:$/)
+    public async whenSubmitErrorWithArgs(
+        orgName: string, type: 'submit' | 'evaluate', chaincodeName: string, functionName: string, channelName: string, identityName: string,
+        args: TableDefinition,
+    ) {
+        try {
+            await this.handleTransaction(orgName, type, chaincodeName, functionName, channelName, identityName, this.generateArgs(args), true);
+            throw new Error('Expected transaction to fail but was successful');
+        } catch (err) {
+            if (err.message === 'Expected transaction to fail but was successful') {
+                throw err;
+            }
+            return;
+        }
+    }
+
     @then(/Expecting result ['"](.*)['"] organisation ['"](.*)['"] (submit|evaluate)s against the chaincode ['"](.*)['"] the transaction ['"](.*)['"] on channel ['"](.*)['"] as ['"](.*)['"]$/)
     public async thenSubmit(
         result: string, orgName: string, type: 'submit' | 'evaluate', chaincodeName: string, functionName: string, channelName: string, identityName: string,
@@ -120,7 +150,7 @@ export class Chaincode {
 
         for (let i = 0; i < attempts; i++) {
             try {
-                await this.handleTransaction(org.name, 'evaluate', chaincodeName, 'org.hyperledger.fabric:getMetadata', channelName, 'admin', []);
+                await this.handleTransaction(org.name, 'evaluate', chaincodeName, 'org.hyperledger.fabric:GetMetadata', channelName, 'admin', []);
                 break;
             } catch (err) {
                 if (i === attempts - 1) {
@@ -138,13 +168,14 @@ export class Chaincode {
     ) {
         const data = await this.handleTransaction(orgName, type, chaincodeName, functionName, channelName, identityName, this.generateArgs(args));
 
-        if (data !== result && !this.jsonResponseEqual(data, result)) {
+        if (data !== result && !jsonResponseEqual(data, result)) {
             throw new Error(`Result did not match expected. Wanted ${result} got ${data}`);
         }
     }
 
     private async handleTransaction(
         orgName: string, type: 'submit' | 'evaluate', chaincodeName: string, functionName: string, channelName: string, identityName: string, args: string[],
+        hideError: boolean = false,
     ): Promise<string> {
         logger.debug(`Handling transaction of type ${type}`);
 
@@ -172,7 +203,9 @@ export class Chaincode {
 
             return data.toString();
         } catch (err) {
-            logger.error('Transaction failed', err);
+            if (!hideError) {
+                logger.error('Transaction failed', err);
+            }
             throw err;
         }
     }
@@ -204,19 +237,5 @@ export class Chaincode {
         data = data.substring(0, data.length - 2) + ']';
 
         return data;
-    }
-
-    private jsonResponseEqual(actual: string, expected: string): boolean {
-        let actualJSON;
-        let expectedJSON;
-
-        try {
-            actualJSON = JSON.parse(actual);
-            expectedJSON = JSON.parse(expected);
-        } catch (err) {
-            return false;
-        }
-
-        return _.isEqual(actualJSON, expectedJSON);
     }
 }

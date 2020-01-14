@@ -3,6 +3,7 @@ import { HookScenarioResult, pickle, SourceLocation } from 'cucumber';
 import { after, before, binding } from 'cucumber-tsflow/dist';
 import * as fs from 'fs-extra';
 import * as path from 'path';
+import { Step } from '../interfaces/interfaces';
 import { Logger } from '../utils/logger';
 import { Workspace } from './utils/workspace';
 
@@ -17,13 +18,34 @@ interface HookScenario {
 export class Hooks {
     private feature = null;
 
+    public constructor(private workspace: Workspace) {
+        // constructor
+    }
+
     @before()
     public beforeScenario(scenario: HookScenario) {
         if (this.feature !== scenario.sourceLocation.uri) {
             this.feature = scenario.sourceLocation.uri;
+            this.workspace.feature = {
+                name: this.feature,
+                scenarios: [],
+            };
+
             logger.info(chalk.yellow(`Running feature ${formatFeature(this.feature)}`));
         }
         logger.info(chalk.yellow(`Running scenario ${scenario.pickle.name}`));
+
+        this.workspace.feature.scenarios.push({
+            name: scenario.pickle.name,
+            steps: scenario.pickle.steps.map((step) => {
+                const stepDef: Step = {
+                    complete: false,
+                    text: step.text,
+                };
+
+                return stepDef;
+            }) as Step[],
+        });
     }
 
     @after()
@@ -33,10 +55,22 @@ export class Hooks {
         logger.info(`${prefix} Status: ${scenarioResult.result.status}`);
         logger.info(`${prefix} Duration: ${formatDuration(scenarioResult.result.duration)}`);
 
-        if (scenarioResult.result.status === 'failed') {
-            logger.error(scenarioResult.result.exception.name);
-            logger.error(scenarioResult.result.exception.message);
-            logger.error(scenarioResult.result.exception.stack);
+        if (scenarioResult.result.status !== 'passed') {
+            if (scenarioResult.result.status === 'failed') {
+                logger.error(scenarioResult.result.exception.name);
+                logger.error(scenarioResult.result.exception.message);
+                logger.error(scenarioResult.result.exception.stack);
+            } else if (scenarioResult.result.status === 'undefined') {
+                logger.error('Step(s) found with text that does not match any known step defintion');
+
+                this.workspace.feature.scenarios[this.workspace.feature.scenarios.length - 1].steps.forEach((step) => {
+                    if (!step.complete) {
+                        logger.error(`Could not find definition for step: ${chalk.red(step.text)}`);
+                    }
+                });
+            }
+
+            logger.error(`Scenario failed ${scenarioResult.pickle.name}`);
         }
 
         logger.info(chalk.yellow(`Finished scenario ${scenarioResult.pickle.name}`));

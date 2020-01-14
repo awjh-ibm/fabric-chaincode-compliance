@@ -51,3 +51,18 @@ export interface CA extends BaseComponent {
 export interface DB extends BaseComponent {
     type: 'level' | 'couch';
 }
+
+export interface Step {
+    text: string;
+    complete: boolean;
+}
+
+export interface Scenario {
+    name: string;
+    steps: Step[];
+}
+
+export interface Feature {
+    name: string;
+    scenarios: Scenario[];
+}

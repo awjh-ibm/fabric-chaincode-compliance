@@ -1,4 +1,4 @@
-# @single-org
+@single-org @basic-checks
 Feature: BasicChecks
 
     Scenario: I can install and instantiate a simple chaincode

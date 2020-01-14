@@ -1,4 +1,4 @@
-import { Global } from '../../interfaces/interfaces';
+import { Feature, Global } from '../../interfaces/interfaces';
 import { Network } from '../../network/network';
 import { Logger } from '../../utils/logger';
 
@@ -16,6 +16,7 @@ export class Workspace {
     public network: Network;
     public language: string;
     public chaincodes: Map<string, ChaincodeConfig>;
+    public feature: Feature;
 
     public constructor() {
         this.network = global.CURRENT_NETWORK;

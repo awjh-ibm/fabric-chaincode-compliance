@@ -1,4 +1,4 @@
-@single-org @not-javascript
+@single-org @not-javascript @advanced-types
 Feature: AdvanceTypes
 
     Scenario: I can install and instantiate an advanced type chaincode
