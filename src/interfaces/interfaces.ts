@@ -1,4 +1,4 @@
-import { FileSystemWallet } from 'fabric-network';
+import { Wallet } from 'fabric-network';
 import { Network } from '../network/network';
 
 export interface Org {
@@ -7,7 +7,7 @@ export interface Org {
     mspid: string;
     peers: Peer[];
     cas: CA[];
-    wallet: FileSystemWallet;
+    wallet: Wallet;
     ccp: string;
     db: DB;
 }

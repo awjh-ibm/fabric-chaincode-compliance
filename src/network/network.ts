@@ -1,5 +1,5 @@
 import * as FabricCAServices from 'fabric-ca-client';
-import { FileSystemWallet, X509WalletMixin } from 'fabric-network';
+import { Wallets, X509Identity } from 'fabric-network';
 import * as fs from 'fs-extra';
 import * as Handlebars from 'handlebars';
 import * as yaml from 'js-yaml';
@@ -45,16 +45,22 @@ export class Network {
             tag: '@' + this.name.replace(/([-][a-z])/g, (group) => group.toUpperCase().replace('-', '')),
         };
 
-        this.config = {
-            orderers: this.parseOrderers(),
-            organisations: this.parseOrgs(),
-            profiles: this.parseProfiles(),
-        };
-
         this.channels = new Map<string, Channel>();
     }
 
+    public async setupConfig() {
+        this.config = {
+            orderers: await this.parseOrderers(),
+            organisations: await this.parseOrgs(),
+            profiles: await this.parseProfiles(),
+        };
+    }
+
     public async build() {
+        if (!this.config) {
+            await this.setupConfig();
+        }
+
         await this.teardownExisting();
         await this.createOrgsNetworkInteractionFiles();
         this.configureEnvVars();
@@ -123,26 +129,36 @@ export class Network {
             );
 
             const wallet = org.wallet;
-            const adminExists = await wallet.exists('admin');
+            const admin = await wallet.get('admin');
 
-            if (adminExists) {
+            if (admin) {
                 continue;
             }
 
             const enrollment = await ca.enroll({enrollmentID: 'admin', enrollmentSecret: 'adminpw'});
 
-            const identity = X509WalletMixin.createIdentity(org.mspid, enrollment.certificate, enrollment.key.toBytes());
-            await wallet.import('admin', identity);
+            const identity: X509Identity = {
+                credentials: {
+                    certificate: enrollment.certificate,
+                    privateKey: enrollment.key.toBytes(),
+                },
+                mspId: org.mspid,
+                type: 'X.509',
+            };
+
+            await wallet.put('admin', identity);
         }
     }
 
-    private parseOrgs(): Org[] {
+    private async parseOrgs(): Promise<Org[]> {
         logger.debug('Parsing orgs');
 
         const rawCryptoConfig = fs.readFileSync(path.join(this.details.resourceFolder, 'crypto-material/crypto-config.yaml'), 'utf8');
         const cryptoConfig = yaml.safeLoad(rawCryptoConfig);
 
-        return cryptoConfig.PeerOrgs.map((org) => {
+        const organisations: Org[] = [];
+
+        for (const org of cryptoConfig.PeerOrgs) {
             const orgIface: Org = {
                 cas: this.parseCAs(org.Name),
                 ccp: this.getCcpPath(org.Name),
@@ -151,16 +167,18 @@ export class Network {
                 mspid: org.Name + 'MSP',
                 name: org.Name,
                 peers: this.parsePeers(org.Name),
-                wallet: new FileSystemWallet(this.getWalletPath(org.Name)),
+                wallet: await Wallets.newFileSystemWallet(this.getWalletPath(org.Name)),
             };
 
             logger.debug(`Parsed org ${org.Name}`, orgIface);
 
-            return orgIface;
-        });
+            organisations.push(orgIface);
+        }
+
+        return organisations;
     }
 
-    private parseProfiles(): Map<string, Profile> {
+    private async parseProfiles(): Promise<Map<string, Profile>> {
         logger.debug('Parsing profiles');
 
         const rawConfigTx = fs.readFileSync(path.join(this.details.resourceFolder, 'crypto-material/configtx.yaml'), 'utf8');
@@ -169,21 +187,26 @@ export class Network {
         const profiles = new Map();
         for (const profileName in configTx.Profiles) {
             if (configTx.Profiles.hasOwnProperty(profileName)) {
+                const organisations: Org[] = [];
+
+                for (const org of configTx.Profiles[profileName].Application.Organizations) {
+                    const name = org.Name.split('MSP')[0];
+                    const orgIface: Org = {
+                        cas: this.parseCAs(name),
+                        ccp: this.getCcpPath(name),
+                        cli: orgToSmall(name) + '_cli',
+                        db: this.parseDB(name),
+                        mspid: org.Name,
+                        name,
+                        peers: this.parsePeers(name),
+                        wallet: await Wallets.newFileSystemWallet(this.getWalletPath(name)),
+                    };
+
+                    organisations.push(orgIface);
+                }
+
                 profiles.set(profileName, {
-                    organisations: configTx.Profiles[profileName].Application.Organizations.map((org) => {
-                        const name = org.Name.split('MSP')[0];
-                        const orgIface: Org = {
-                            cas: this.parseCAs(name),
-                            ccp: this.getCcpPath(name),
-                            cli: orgToSmall(name) + '_cli',
-                            db: this.parseDB(name),
-                            mspid: org.Name,
-                            name,
-                            peers: this.parsePeers(name),
-                            wallet: new FileSystemWallet(this.getWalletPath(name)),
-                        };
-                        return orgIface;
-                    }),
+                    organisations,
                 });
             }
         }
@@ -353,8 +376,9 @@ export class Network {
     }
 
     private configureEnvVars() {
-        process.env.FABRIC_IMG_TAG = ':1.4.1';
-        process.env.FABRIC_COUCHDB_TAG = ':0.4.15';
+        process.env.FABRIC_IMG_TAG = ':2.0.0-beta';
+        process.env.FABRIC_CA_IMG_TAG = ':1.4.4';
+        process.env.FABRIC_COUCHDB_TAG = ':0.4.18';
         process.env.FABRIC_DEBUG = 'info';
         process.env.NETWORK_FOLDER = this.details.resourceFolder;
 
@@ -372,7 +396,7 @@ export class Network {
         await Docker.composeUp(cliComposeFile);
 
         await Docker.exec('cli', 'cryptogen generate --config=/etc/hyperledger/config/crypto-config.yaml --output /etc/hyperledger/config/crypto-config');
-        await Docker.exec('cli', 'configtxgen -profile Genesis -outputBlock /etc/hyperledger/config/genesis.block');
+        await Docker.exec('cli', 'configtxgen -profile Genesis -outputBlock /etc/hyperledger/config/genesis.block -channelID genesis');
         await Docker.exec('cli', 'cp /etc/hyperledger/fabric/core.yaml /etc/hyperledger/config');
         await Docker.exec('cli', 'sh /etc/hyperledger/tools/rename_sk.sh');
 

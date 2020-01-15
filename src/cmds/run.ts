@@ -71,6 +71,7 @@ const cmd: CommandModule = {
                 logger.info(chalk.cyan(`Creating network ${name}`));
 
                 const network = new Network(name);
+                await network.setupConfig();
                 global.CURRENT_NETWORK = network;
 
                 try {

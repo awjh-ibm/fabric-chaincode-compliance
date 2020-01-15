@@ -1,6 +1,6 @@
 import { TableDefinition } from 'cucumber';
 import { binding } from 'cucumber-tsflow/dist';
-import { Gateway, X509WalletMixin } from 'fabric-network';
+import { Gateway, X509Identity } from 'fabric-network';
 import { given } from '../../decorators/steps';
 import { Logger } from '../../utils/logger';
 import { Workspace } from '../utils/workspace';
@@ -28,9 +28,9 @@ export class Identity {
 
         const wallet = org.wallet;
 
-        const identityExists = await wallet.exists(identityName);
+        const identity = await wallet.get(identityName);
 
-        if (identityExists) {
+        if (identity) {
             logger.debug(`Identity "${identityName}" already exists for organisation "${orgName}"`);
             return;
         }
@@ -47,22 +47,31 @@ export class Identity {
             }
         }
 
-        const adminExists = await wallet.exists('admin');
+        const admin = await wallet.get('admin');
 
-        if (!adminExists) {
+        if (!admin) {
             throw new Error(`Missing admin for organisation "${orgName}"`);
         }
 
         const gateway = new Gateway();
         await gateway.connect(org.ccp, {wallet: org.wallet, identity: 'admin', discovery: {enabled: true, asLocalhost: true}});
 
-        const ca = gateway.getClient().getCertificateAuthority();
-        const adminIdentity = gateway.getCurrentIdentity();
+        const client = gateway.getClient();
+        const ca = client.getCertificateAuthority();
+        const adminIdentity = await client.getUserContext('admin', false);
 
         // Register the user, enroll the user, and import the new identity into the wallet.
         const secret = await ca.register({ affiliation: '', enrollmentID: identityName, role: 'client', attrs }, adminIdentity);
         const enrollment = await ca.enroll({ enrollmentID: identityName, enrollmentSecret: secret });
-        const userIdentity = X509WalletMixin.createIdentity(org.mspid, enrollment.certificate, enrollment.key.toBytes());
-        await wallet.import(identityName, userIdentity);
+        const userIdentity: X509Identity = {
+            credentials: {
+                certificate: enrollment.certificate,
+                privateKey: enrollment.key.toBytes(),
+            },
+            mspId: org.mspid,
+            type: 'X.509',
+        };
+
+        await wallet.put(identityName, userIdentity);
     }
 }
