@@ -1,5 +1,10 @@
 import { Wallet } from 'fabric-network';
+import { CommandModule as YargsCommandModule, Arguments } from 'yargs';
 import { Network } from '../network/network';
+
+export interface CommandModule extends YargsCommandModule {
+    desc: string;
+}
 
 export interface Org {
     name: string;
@@ -26,10 +31,13 @@ export interface Profile {
     organisations: Org[];
 }
 
+export type LogLevels = 'info' | 'debug';
+export type Languages = 'golang' | 'java' | 'node';
+
 export interface Global extends NodeJS.Global {
-    CHAINCODE_LANGUAGE: 'golang' | 'java' | 'node';
+    CHAINCODE_LANGUAGE: Languages;
     CURRENT_NETWORK: Network;
-    LOGGING_LEVEL: 'info' | 'debug';
+    LOGGING_LEVEL: LogLevels;
 }
 
 export interface Channel {

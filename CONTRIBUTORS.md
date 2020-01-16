@@ -48,3 +48,6 @@ Once you have the new network structure you will then need to tag features that 
     - All organisations require a CLI. This is used by the step definitions to issue peer commands
     - CLI name must be of the form `<ORG_NAME>_cli` where ORG_NAME is the snake case version of the organisation's name e.g. org1
     - Must extend `clibase` service from `shared/docker-compose/docker-compose-base.yaml`
+
+## Defining a new chaincode
+Should a new test be added that requires a new chaincode to be included you will need to add a JSON definition of the chaincode to the `docs/schemas` folder. The name for this file should be the name of the chaincode as used in the feature files `.json`. The file follows the same schema that metadata chaincode produces follows with the additional field `description` on the transactions. The file should contain the name of the contracts forming the chaincode as used in transaction calls in the cucumber features. It should also contain the definition for all transaction referenced in the features including their parameters (if any), return type (if any), name, submit tag (if required) and a description providing detailed information on exactly what the transaction should do e.g. when to throw errors, which exact values to return etc.

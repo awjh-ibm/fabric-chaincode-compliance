@@ -25,7 +25,7 @@ try {
     .strict()
     .argv;
 
-    results.thePromise.then((resp) => {
+    (results.thePromise as Promise<any>).then((resp) => {
         console.log('Command succeeded');
         process.exit(0);
     }).catch((err) => {

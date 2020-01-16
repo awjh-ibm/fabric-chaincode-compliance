@@ -2,8 +2,8 @@ import * as chalk from 'chalk';
 import * as cucumber from 'cucumber';
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import { Arguments, Argv, CommandModule } from 'yargs';
-import { Global } from '../interfaces/interfaces';
+import { Arguments, Argv } from 'yargs';
+import { CommandModule, Global, Languages, LogLevels } from '../interfaces/interfaces';
 import { DEFINED_NETWORKS, Network } from '../network/network';
 import { Logger } from '../utils/logger';
 import { addExports } from './utils';
@@ -32,7 +32,7 @@ const options = {
     },
     language: {
         alias: 'l',
-        choices: ['golang', 'java', 'node'],
+        choices: ['golang', 'java', 'javascript', 'typescript'],
         description: 'Language of chaincodes that will be used',
         required: true,
         type: 'string',
@@ -50,17 +50,16 @@ const options = {
 
 const cmd: CommandModule = {
     builder: (yargs: Argv): Argv => {
-        yargs.options(options);
-        yargs.usage('fabric-chaincode-compliance');
+        yargs.options(options as any);
 
         return yargs;
     },
     command: 'run [options]',
     desc: 'Run the compliance tests',
     handler: (args: Arguments): Arguments => {
-        const chaincodeFolder = path.resolve(process.cwd(), args.chaincodeDir);
-        global.CHAINCODE_LANGUAGE = args.language;
-        global.LOGGING_LEVEL = args.loggingLevel;
+        const chaincodeFolder = path.resolve(process.cwd(), args.chaincodeDir as string);
+        global.CHAINCODE_LANGUAGE = (args.language === 'javascript' || args.language === 'typescript') ? 'node' : args.language as Languages;
+        global.LOGGING_LEVEL = args.loggingLevel as LogLevels;
 
         Logger.refreshLoggers();
 
@@ -82,7 +81,7 @@ const cmd: CommandModule = {
                     if (args.chaincodeOverride) {
                         let overrides;
                         try {
-                            overrides = JSON.parse(args.chaincodeOverride);
+                            overrides = JSON.parse(args.chaincodeOverride as string);
                         } catch (err) {
                             throw new Error('Option chaincode-override must be JSON');
                         }
@@ -102,8 +101,12 @@ const cmd: CommandModule = {
 
                 let argv = process.argv.slice(0, 2).concat(cucumberArgs).concat('--tags', `@${name}`).concat('--tags', `not @not-${args.language}`);
 
+                if (global.CHAINCODE_LANGUAGE === 'node') {
+                    argv = argv.concat('--tags', 'not @not-node');
+                }
+
                 if (args.tags) {
-                    argv = argv.concat('--tags', args.tags);
+                    argv = argv.concat('--tags', args.tags as string);
                 }
 
                 const cli = new (cucumber as any).Cli({
@@ -141,7 +144,7 @@ const cmd: CommandModule = {
             }
 
             resolve();
-        });
+        }) as any;
     },
 };
 
